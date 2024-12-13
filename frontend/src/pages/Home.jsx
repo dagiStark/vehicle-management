@@ -8,15 +8,17 @@ import Vehicles from "../sections/Vehicles";
 
 function Home() {
   return (
-    <div>
-      <Sidebar />
+    <div className="m-3">
+      <div className="flex ">
+        <Sidebar />
 
-      <Routes>
-        <Route path="/" element={<Main />}>
-          <Route path="overview" element={<Overview />} />
-          <Route path="vehicles" element={<Vehicles />} />
-        </Route>
-      </Routes>
+        <Routes>
+          <Route path="/" element={<Main />}>
+            <Route path="overview" element={<Overview />} />
+            <Route path="vehicles" element={<Vehicles />} />
+          </Route>
+        </Routes>
+      </div>
     </div>
   );
 }
