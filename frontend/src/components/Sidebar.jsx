@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import  { useState } from "react";
 import { Link } from "react-router-dom";
-import Button from "@mui/material/Button";
 
 import { navItems } from "../constants";
 
@@ -8,7 +7,7 @@ function Sidebar() {
   const [currentItem, setCurrentItem] = useState("overview");
 
   return (
-    <div className="w-[15%] h-[100vh] bg-[#022213] pl-6 pt-3">
+    <div className="w-[15%] h-[100vh] bg-[#022213] pl-6 pt-3 rounded-l-2xl">
       <div>
         <h1 className="text-3xl font-bold text-white">Dashboard</h1>
       </div>

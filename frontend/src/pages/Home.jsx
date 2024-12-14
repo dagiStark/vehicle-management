@@ -1,4 +1,3 @@
-import React from "react";
 import { Routes, Route } from "react-router-dom";
 
 import Main from "../components/Main";
@@ -9,9 +8,8 @@ import Vehicles from "../sections/Vehicles";
 function Home() {
   return (
     <div className="m-3">
-      <div className="flex ">
+      <div className="flex">
         <Sidebar />
-
         <Routes>
           <Route path="/" element={<Main />}>
             <Route path="overview" element={<Overview />} />
