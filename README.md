@@ -1,6 +1,6 @@
 # Vehicle-Management Dashboard
 
-![image alt](https://github.com/dagiStark/vehicle-management/blob/d3fe98b2f3d3522f328531d90252e049753fb6e2/veh1.png)
+![image alt](https://github.com/dagiStark/vehicle-management/blob/c8669f4ee8bbf0d6d7c3d634c783baa4de8a5c3e/veh1.webp)
 ![image alt](
 ## Technologies
 * Mongodb
