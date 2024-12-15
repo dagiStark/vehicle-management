@@ -1,6 +1,6 @@
 const Vehicle = require("../models/Vehicle");
 
-export const addVehicle = async (req, res) => {
+const addVehicle = async (req, res) => {
   try {
     const { vehicleName, status } = req.body;
     const newVehicle = new Vehicle({ vehicleName, status });
@@ -15,13 +15,13 @@ export const addVehicle = async (req, res) => {
   }
 };
 
-export const updateVehicle = async (req, res) => {
+const updateVehicle = async (req, res) => {
   try {
-    const { status } = req.body;
-    const { id } = req.params.id;
+    const { status, vehicleName } = req.body;
+    const id = req.params.id;
     const updatedVehicle = await Vehicle.findByIdAndUpdate(
       id,
-      { status, updatedAt: Date.now() },
+      { vehicleName, status, updatedAt: Date.now() },
       { new: true } // Return the updated document
     );
     if (!updatedVehicle) {
@@ -38,10 +38,10 @@ export const updateVehicle = async (req, res) => {
   }
 };
 
-export const getVehicles = async (req, res) => {
+const getVehicles = async (req, res) => {
   try {
-    const vehicles = await Vehicle.find().sort({ updatedAt: -1 }); 
-    res.status(200).json(vehicles);
+    const vehicles = await Vehicle.find().sort({ updatedAt: -1 });
+    res.status(200).json({ data: vehicles });
   } catch (err) {
     res
       .status(500)
@@ -49,7 +49,7 @@ export const getVehicles = async (req, res) => {
   }
 };
 
-export const deleteVehicle = async (req, res) => {
+const deleteVehicle = async (req, res) => {
   try {
     const id = req.params.id;
     const deletedVehicle = await Vehicle.findByIdAndDelete(id);
@@ -66,3 +66,5 @@ export const deleteVehicle = async (req, res) => {
       .json({ message: "Error deleting vehicle", error: error.message });
   }
 };
+
+module.exports = { addVehicle, updateVehicle, getVehicles, deleteVehicle };

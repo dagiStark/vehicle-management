@@ -18,8 +18,10 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { fakeData, usStates } from "../constants";
+import {  usStates } from "../constants";
 import DeleteIcon from "@mui/icons-material/Delete";
+
+import useVehiclesApi from "../hooks/useVehicleApi";
 
 const Example = () => {
   const [validationErrors, setValidationErrors] = useState({});
@@ -29,7 +31,7 @@ const Example = () => {
   const columns = useMemo(
     () => [
       {
-        accessorKey: "id",
+        accessorKey: "_id",
         header: "Id",
         enableEditing: false,
         size: 80,
@@ -51,7 +53,9 @@ const Example = () => {
               ...validationErrors,
               [cell.id]: validationError,
             });
-            setEditedUsers({ ...editedUsers, [row.id]: row.original });
+            setEditedUsers({ ...editedUsers, [row.id]: row._valuesCache });
+            console.log("Rows: ", row);
+            console.log("Edited: ", editedUsers);
           },
         }),
       },
@@ -67,12 +71,12 @@ const Example = () => {
           onChange: (event) =>
             setEditedUsers({
               ...editedUsers,
-              [row.id]: { ...row.original, state: event.target.value },
-            }),
+              [row.id]: { ...row.original, status: event.target.value },
+            }),          
         }),
       },
       {
-        accessorKey: "lastUpdate",
+        accessorKey: "updatedAt",
         header: "Last Update",
         editVariant: "date",
         muiEditTextFieldProps: ({ row }) => ({
@@ -91,51 +95,85 @@ const Example = () => {
   );
 
   //call CREATE hook
-  const { mutateAsync: createUser, isPending: isCreatingUser } =
-    useCreateUser();
-  //call READ hook
+  const { mutateAsync: createVehicle, isPending: isCreatingUser } =
+    useCreateVehicle();
+
+  // call READ hook
   const {
-    data: fetchedUsers = [],
+    data: fetchedVehicles = [],
     isError: isLoadingUsersError,
     isFetching: isFetchingUsers,
     isLoading: isLoadingUsers,
-  } = useGetUsers();
-  //call UPDATE hook
-  const { mutateAsync: updateUsers, isPending: isUpdatingUsers } =
-    useUpdateUsers();
-  //call DELETE hook
-  const { mutateAsync: deleteUser, isPending: isDeletingUser } =
-    useDeleteUser();
+  } = useGetVehicles();
 
-  //CREATE action
-  const handleCreateUser = async ({ values, table }) => {
-    const newValidationErrors = validateUser(values);
+  //call UPDATE hook
+  const { mutateAsync: updateVehicle, isPending: isUpdatingUsers } =
+    useUpdateVehicle();
+  //call DELETE hook
+  const { mutateAsync: deleteVehicle, isPending: isDeletingUser } =
+    useDeleteVehicle();
+
+  // CREATE action
+  const handleCreateVehicle = async ({ values, table }) => {
+    // Assuming you have a validation function
+    const newValidationErrors = validateVehicle(values);
     if (Object.values(newValidationErrors).some((error) => error)) {
       setValidationErrors(newValidationErrors);
       return;
     }
     setValidationErrors({});
-    await createUser(values);
-    table.setCreatingRow(null); //exit creating mode
+
+    // Pass `values` to the API via the `createVehicle` hook
+    await createVehicle({
+      vehicleName: values.vehicleName,
+      status: values.status,
+    });
+
+    table.setCreatingRow(null); // Exit creating mode
   };
 
   //UPDATE action
-  const handleSaveUsers = async () => {
+  const handleSaveVehicle = async () => {
     if (Object.values(validationErrors).some((error) => !!error)) return;
-    await updateUsers(Object.values(editedUsers));
-    setEditedUsers({});
+
+    // Extract the first (or relevant) edited user
+    const editedUserArray = Object.values(editedUsers);
+    if (editedUserArray.length === 0) {
+      console.error("No edited users found");
+      return;
+    }
+
+    const editedUser = editedUserArray[0]; // Access the first edited user
+    console.log("Edited User:", editedUser);
+
+    // Construct the updated vehicle data
+    const updatedVehicle = {
+      id: editedUser._id, // Use `id` instead of `_id` for the backend
+      vehicleName: editedUser.vehicleName,
+      status: editedUser.status,
+    };
+
+    console.log("updated vehicle", updatedVehicle);
+    // console.log("updateVehicleStatus Function: ", updateVehicle);
+
+    try {
+      await updateVehicle(updatedVehicle); // Call the mutation with the updated vehicle
+      setEditedUsers({}); // Clear the editedUsers state
+    } catch (error) {
+      console.error("Failed to update vehicle:", error);
+    }
   };
 
   //DELETE action
   const openDeleteConfirmModal = (row) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
-      deleteUser(row.original.id);
+      deleteVehicle(row.original._id);
     }
   };
 
   const table = useMaterialReactTable({
     columns,
-    data: fetchedUsers,
+    data: fetchedVehicles,
     createDisplayMode: "row", // ('modal', and 'custom' are also available)
     editDisplayMode: "cell", // ('modal', 'row', 'table', and 'custom' are also available)
     enableCellActions: true,
@@ -156,7 +194,7 @@ const Example = () => {
       },
     },
     onCreatingRowCancel: () => setValidationErrors({}),
-    onCreatingRowSave: handleCreateUser,
+    onCreatingRowSave: handleCreateVehicle,
     renderRowActions: ({ row }) => (
       <Box sx={{ display: "flex", gap: "1rem" }}>
         <Tooltip title="Delete">
@@ -171,7 +209,7 @@ const Example = () => {
         <Button
           color="success"
           variant="contained"
-          onClick={handleSaveUsers}
+          onClick={handleSaveVehicle}
           disabled={
             Object.keys(editedUsers).length === 0 ||
             Object.values(validationErrors).some((error) => !!error)
@@ -216,80 +254,88 @@ const Example = () => {
   return <MaterialReactTable table={table} />;
 };
 
-//CREATE hook (post new user to api)
-function useCreateUser() {
+// CREATE hook: Add a new vehicle
+function useCreateVehicle() {
   const queryClient = useQueryClient();
+  const { addVehicle } = useVehiclesApi();
+
   return useMutation({
-    mutationFn: async (user) => {
-      //send api update request here
-      await new Promise((resolve) => setTimeout(resolve, 1000)); //fake api call
-      return Promise.resolve();
+    mutationFn: async ({ vehicleName, status }) => {
+      await addVehicle(vehicleName, status); // Call add vehicle API
     },
-    //client side optimistic update
-    onMutate: (newUserInfo) => {
-      queryClient.setQueryData(["users"], (prevUsers) => [
-        ...prevUsers,
+    // Optimistic UI update
+    onMutate: (newVehicle) => {
+      queryClient.setQueryData(["vehicles"], (prevVehicles) => [
+        ...(prevVehicles || []),
         {
-          ...newUserInfo,
-          id: (Math.random() + 1).toString(36).substring(7),
+          ...newVehicle,
+          updatedAt: new Date().toISOString(),
         },
       ]);
     },
-    // onSettled: () => queryClient.invalidateQueries({ queryKey: ['users'] }), //refetch users after mutation, disabled for demo
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["vehicles"] }),
   });
 }
 
-//READ hook (get users from api)
-function useGetUsers() {
+// READ hook: Fetch all vehicles
+const useGetVehicles = () => {
+  const { fetchVehicles } = useVehiclesApi();
+  console.log("fetching......");
+
   return useQuery({
-    queryKey: ["users"],
+    queryKey: ["vehicles"],
     queryFn: async () => {
-      //send api request here
-      await new Promise((resolve) => setTimeout(resolve, 1000)); //fake api call
-      return Promise.resolve(fakeData);
+      const response = await fetchVehicles();
+      console.log(response);
+      return response.data; // Return the fetched data
     },
     refetchOnWindowFocus: false,
   });
-}
+};
 
-//UPDATE hook (put user in api)
-function useUpdateUsers() {
+// UPDATE hook: Update vehicle status
+function useUpdateVehicle() {
   const queryClient = useQueryClient();
+  const { updateVehicleStatus } = useVehiclesApi();
+
   return useMutation({
-    mutationFn: async (users) => {
-      //send api update request here
-      await new Promise((resolve) => setTimeout(resolve, 1000)); //fake api call
-      return Promise.resolve();
+    mutationFn: async ({ id, vehicleName, status }) => {
+      // Update a single vehicle's status
+      const updatedVehicle = await updateVehicleStatus(id, vehicleName, status);
+      return updatedVehicle; // Return the updated vehicle
     },
-    //client side optimistic update
-    onMutate: (newUsers) => {
-      queryClient.setQueryData(["users"], (prevUsers) =>
-        prevUsers?.map((user) => {
-          const newUser = newUsers.find((u) => u.id === user.id);
-          return newUser ? newUser : user;
-        })
+    // Optimistic UI update
+    onMutate: ({ id, status }) => {
+      queryClient.setQueryData(["vehicles"], (prevVehicles) =>
+        prevVehicles?.map((vehicle) =>
+          vehicle._id === id
+            ? { ...vehicle, status, updatedAt: new Date().toISOString() }
+            : vehicle
+        )
       );
     },
-    // onSettled: () => queryClient.invalidateQueries({ queryKey: ['users'] }), //refetch users after mutation, disabled for demo
+    onSettled: () => {
+      queryClient.invalidateQueries(["vehicles"]);
+    },
   });
 }
 
-//DELETE hook (delete user in api)
-function useDeleteUser() {
+// DELETE hook: Delete a vehicle
+function useDeleteVehicle() {
   const queryClient = useQueryClient();
+  const { deleteVehicle } = useVehiclesApi();
+
   return useMutation({
-    mutationFn: async (userId) => {
-      //send api update request here
-      await new Promise((resolve) => setTimeout(resolve, 1000)); //fake api call
-      return Promise.resolve();
+    mutationFn: async (id) => {
+      await deleteVehicle(id); // Call delete vehicle API
     },
-    //client side optimistic update
-    onMutate: (userId) => {
-      queryClient.setQueryData(["users"], (prevUsers) =>
-        prevUsers?.filter((user) => user.id !== userId)
+    // Optimistic UI update
+    onMutate: (id) => {
+      queryClient.setQueryData(["vehicles"], (prevVehicles) =>
+        prevVehicles?.filter((vehicle) => vehicle._id !== id)
       );
     },
-    // onSettled: () => queryClient.invalidateQueries({ queryKey: ['users'] }), //refetch users after mutation, disabled for demo
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["vehicles"] }),
   });
 }
 
@@ -307,20 +353,14 @@ const Vehicles = () => (
 export default Vehicles;
 
 const validateRequired = (value) => !!value.length;
-const validateEmail = (email) =>
-  !!email.length &&
-  email
-    .toLowerCase()
-    .match(
-      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
-    );
 
-function validateUser(user) {
-  return {
-    firstName: !validateRequired(user.firstName)
-      ? "First Name is Required"
-      : "",
-    lastName: !validateRequired(user.lastName) ? "Last Name is Required" : "",
-    email: !validateEmail(user.email) ? "Incorrect Email Format" : "",
-  };
-}
+const validateVehicle = (values) => {
+  const errors = {};
+  if (!values.vehicleName) {
+    errors.vehicleName = "Vehicle name is required";
+  }
+  if (!values.status) {
+    errors.status = "Status is required";
+  }
+  return errors;
+};

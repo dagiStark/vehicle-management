@@ -9,10 +9,10 @@ const {
 } = require("../controllers/index");
 
 
-router.post("/", addVehicle);
-router.put("/:id", updateVehicle);
+router.post("/add", addVehicle);
+router.patch("/:id", updateVehicle);
 router.get("/", getVehicles);
-router.delete("/", deleteVehicle);
+router.delete("/:id", deleteVehicle);
 
 
 module.exports = router;
