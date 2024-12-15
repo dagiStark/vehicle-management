@@ -18,3 +18,6 @@
 * setup environmnet variables
 * npm install 
 * npm run dev(frontend) & npm run start(backend)
+* double click on the columns cell to update values
+
+
